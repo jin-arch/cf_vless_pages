@@ -4,12 +4,12 @@ import { connect } from 'cloudflare:sockets';
 
 // How to generate your own UUID:
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
-let userID = '90cd4a77-141a-43c9-991b-08263cfe9c10';
+let userID = '76cec222-8e0e-4b51-8c3c-404b72f61c2a';
 
 let proxyIP = 'proxyip.fuck.cloudns.biz';// 小白勿动，该地址并不影响你的网速，这是给CF代理使用的。
 
 //let sub = '';// 留空则显示原版内容
-let sub = 'sub.cmliucdn.tk';// 内置优选订阅生成器，可自行搭建 https://github.com/cmliu/WorkerVless2sub
+let sub = '200848a7-a9be-4546-bcc4-79b9bb10304a.cmliucdn.tk';// 内置优选订阅生成器，可自行搭建 https://github.com/cmliu/WorkerVless2sub
 let subconverter = 'api.v1.mk';// clash订阅转换后端，目前使用肥羊的订阅转换功能。支持自建psub 可自行搭建https://github.com/bulianglin/psub
 let subconfig = "https://raw.githubusercontent.com/cmliu/edgetunnel/main/Clash/config/ACL4SSR_Online_Full_MultiMode.ini"; //订阅配置文件
 // The user name and password do not contain special characters
