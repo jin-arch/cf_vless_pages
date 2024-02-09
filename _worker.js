@@ -15,7 +15,7 @@ let subconfig = "https://github.com/jin-arch/cf_vless_pages/raw/main/Clash/confi
 // The user name and password do not contain special characters
 // Setting the address will ignore proxyIP
 // Example:  user:pass@host:port  or  host:port
-let socks5Address = '111:12343@[2a01:4f8:251:17ad:0000:0000:7721:010f]:43685';
+let socks5Address = 'proxyip.digitalocean.fxxk.dedyn.io';
 
 if (!isValidUUID(userID)) {
 	throw new Error('uuid is not valid');
