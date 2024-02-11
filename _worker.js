@@ -6,17 +6,17 @@ import { connect } from 'cloudflare:sockets';
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
 let userID = '76cec222-8e0e-4b51-8c3c-404b72f61c2a';
 
-let proxyIP = '';// 小白勿动，该地址并不影响你的网速，这是给CF代理使用的。
+let proxyIP = '';// 小白勿动，该地址并不影响你的网速，这是给CF代理使用的。'cdn.xn--b6gac.eu.org', 'cdn-all.xn--b6gac.eu.org', 'edgetunnel.anycast.eu.org'
 
 //let sub = '';// 留空则显示原版内容
-let sub = '200848a7-a9be-4546-bcc4-79b9bb10304a.cmliucdn.tk';// 内置优选订阅生成器，可自行搭建 https://github.com/cmliu/WorkerVless2sub
+let sub = 'https://200848a7-a9be-4546-bcc4-79b9bb10304a.cmliussss.workers.dev';// 内置优选订阅生成器，可自行搭建 https://github.com/cmliu/WorkerVless2sub
 let subconverter = 'api.v1.mk';// clash订阅转换后端，目前使用肥羊的订阅转换功能。支持自建psub 可自行搭建https://github.com/bulianglin/psub
-let subconfig = "https://github.com/jin-arch/cf_vless_pages/raw/main/Clash/config/Online_Full_Auto.ini"; //订阅配置文件
+let subconfig = "https://raw.githubusercontent.com/cmliu/edgetunnel/main/Clash/config/ACL4SSR_Online_Full_MultiMode.ini"; //订阅配置文件
 // The user name and password do not contain special characters
 // Setting the address will ignore proxyIP
 // Example:  user:pass@host:port  or  host:port
-let socks5Address = 'proxyip.digitalocean.fxxk.dedyn.io';
-
+let socks5Address = '';
+let RproxyIP = "false";
 if (!isValidUUID(userID)) {
 	throw new Error('uuid is not valid');
 }
@@ -37,6 +37,10 @@ export default {
 			userID = env.UUID || userID;
 			proxyIP = env.PROXYIP || proxyIP;
 			socks5Address = env.SOCKS5 || socks5Address;
+			sub = env.SUB || sub;
+			subconverter = env.SUBAPI || subconverter;
+			subconfig = env.SUBCONFIG || subconfig;
+			RproxyIP = env.RPROXYIP || RproxyIP;
 			if (socks5Address) {
 				try {
 					parsedSocks5Address = socks5AddressParser(socks5Address);
@@ -48,26 +52,29 @@ export default {
 				}
 			}
 			const upgradeHeader = request.headers.get('Upgrade');
+			const url = new URL(request.url);
 			if (!upgradeHeader || upgradeHeader !== 'websocket') {
-        const url = new URL(request.url);
-        switch (url.pathname) {
-          case '/':
-            return new Response(JSON.stringify(request.cf), { status: 200 });
-          case `/${userID}`: {
-            const vlessConfig = await getVLESSConfig(userID, request.headers.get('Host'), sub, userAgent);
-            return new Response(`${vlessConfig}`, {
-              status: 200,
-              headers: {
-                "Content-Type": "text/plain;charset=utf-8",
-              }
-            });
-          }
-          default:
-            return new Response('Not found', { status: 404 });
-        }
-      } else {
-        return await vlessOverWSHandler(request);
-      }      
+				// const url = new URL(request.url);
+				switch (url.pathname) {
+				case '/':
+					return new Response(JSON.stringify(request.cf), { status: 200 });
+				case `/${userID}`: {
+					const vlessConfig = await getVLESSConfig(userID, request.headers.get('Host'), sub, userAgent);
+					return new Response(`${vlessConfig}`, {
+					status: 200,
+					headers: {
+						"Content-Type": "text/plain;charset=utf-8",
+					}
+					});
+				}
+				default:
+					return new Response('Not found', { status: 404 });
+				}
+			} else {
+				if (new RegExp('/proxyip=', 'i').test(url.pathname)) proxyIP = url.pathname.split("=")[1];
+				else if (new RegExp('/proxyip.', 'i').test(url.pathname)) proxyIP = url.pathname.split("/proxyip.")[1];
+				return await vlessOverWSHandler(request);
+			}
 		} catch (err) {
 			/** @type {Error} */ let e = err;
 			return new Response(e.toString());
@@ -774,42 +781,85 @@ function socks5AddressParser(address) {
  * @param {string} userAgent
  * @returns {Promise<string>}
  */
-async function getVLESSConfig(userID, hostName, sub, userAgent) {
+async function getVLESSConfig(userID, hostName, sub, userAgent, proxyIP) {
+	if (!proxyIP || proxyIP === '') RproxyIP = "true";
 	// 如果sub为空，则显示原始内容
-	if (!sub) {
-	  const vlessMain = `vless://${userID}@${hostName}:443?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#${hostName}`;
+	if (!sub || sub === '') {
+		const vlessMain = `vless://${userID}@${hostName}:443?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#${hostName}`;
   
-	  return `
-  ################################################################
-  v2ray
-  ---------------------------------------------------------------
-  ${vlessMain}
-  ---------------------------------------------------------------
-  ################################################################
-  clash-meta
-  ---------------------------------------------------------------
-  - type: vless
-	name: ${hostName}
-	server: ${hostName}
-	port: 443
-	uuid: ${userID}
-	network: ws
-	tls: true
-	udp: false
-	sni: ${hostName}
-	client-fingerprint: chrome
-	ws-opts:
-	  path: "/?ed=2048"
-	  headers:
-		host: ${hostName}
-  ---------------------------------------------------------------
-  ################################################################
-  `;
+		return `
+	################################################################
+	v2ray
+	---------------------------------------------------------------
+	${vlessMain}
+	---------------------------------------------------------------
+	################################################################
+	clash-meta
+	---------------------------------------------------------------
+	- type: vless
+	  name: ${hostName}
+	  server: ${hostName}
+	  port: 443
+	  uuid: ${userID}
+	  network: ws
+	  tls: true
+	  udp: false
+	  sni: ${hostName}
+	  client-fingerprint: chrome
+	  ws-opts:
+	    path: "/?ed=2048"
+	    headers:
+		  host: ${hostName}
+	---------------------------------------------------------------
+	################################################################
+	`;
+	} else if (sub && userAgent.includes('mozilla')) {
+		const vlessMain = `vless://${userID}@${hostName}:443?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#${hostName}`;
+	
+		return `
+	################################################################
+	Subscribe / sub
+	响应式订阅链接, 支持 Base64、clash-meta、sing-box 订阅格式, 您的订阅内容由 ${sub} 提供维护支持.
+	---------------------------------------------------------------
+	https://${hostName}/${userID}
+	---------------------------------------------------------------
+	################################################################
+	v2ray
+	---------------------------------------------------------------
+	${vlessMain}
+	---------------------------------------------------------------
+	################################################################
+	clash-meta
+	---------------------------------------------------------------
+	- type: vless
+	  name: ${hostName}
+	  server: ${hostName}
+	  port: 443
+	  uuid: ${userID}
+	  network: ws
+	  tls: true
+	  udp: false
+	  sni: ${hostName}
+	  client-fingerprint: chrome
+	  ws-opts:
+		path: "/?ed=2048"
+		headers:
+		  host: ${hostName}
+	---------------------------------------------------------------
+	################################################################
+	telegram 交流群 技术大佬~在线发牌!
+	https://t.me/CMLiussss
+	---------------------------------------------------------------
+	github 项目地址 Star!Star!Star!!!
+	https://github.com/cmliu/edgetunnel
+	---------------------------------------------------------------
+	################################################################
+	`;
 	} else if (sub && userAgent.includes('clash')) {
 	  // 如果sub不为空且UA为clash，则发起特定请求
 	  	if (typeof fetch === 'function') {
 			try {
-				const response = await fetch(`https://${subconverter}/sub?target=clash&url=https%3A%2F%2F${sub}%2Fsub%3Fhost%3D${hostName}%26uuid%3D${userID}&insert=false&config=${encodeURIComponent(subconfig)}&emoji=true&list=false&tfo=false&scv=false&fdn=false&sort=false&new_name=true`);
+				const response = await fetch(`https://${subconverter}/sub?target=clash&url=https%3A%2F%2F${sub}%2Fsub%3Fhost%3D${hostName}%26uuid%3D${userID}%26edgetunnel%3Dcmliu%26proxyip%3D${RproxyIP}&insert=false&config=${encodeURIComponent(subconfig)}&emoji=true&list=false&tfo=false&scv=false&fdn=false&sort=false&new_name=true`);
 				const content = await response.text();
 				return content;
 			} catch (error) {
@@ -823,7 +873,7 @@ async function getVLESSConfig(userID, hostName, sub, userAgent) {
 		// 如果sub不为空且UA为sing-box，则发起特定请求
 		if (typeof fetch === 'function') {
 			try {
-				const response = await fetch(`https://${subconverter}/sub?target=singbox&url=https%3A%2F%2F${sub}%2Fsub%3Fhost%3D${hostName}%26uuid%3D${userID}&insert=false&config=${encodeURIComponent(subconfig)}&emoji=true&list=false&tfo=false&scv=false&fdn=false&sort=false&new_name=true`);
+				const response = await fetch(`https://${subconverter}/sub?target=singbox&url=https%3A%2F%2F${sub}%2Fsub%3Fhost%3D${hostName}%26uuid%3D${userID}%26edgetunnel%3Dcmliu%26proxyip%3D${RproxyIP}&insert=false&config=${encodeURIComponent(subconfig)}&emoji=true&list=false&tfo=false&scv=false&fdn=false&sort=false&new_name=true`);
 				const content = await response.text();
 				return content;
 			} catch (error) {
@@ -837,7 +887,7 @@ async function getVLESSConfig(userID, hostName, sub, userAgent) {
 	  	// 如果sub不为空且UA，则发起一般请求
 	  	if (typeof fetch === 'function') {
 			try {
-		  		const response = await fetch(`https://${sub}/sub?host=${hostName}&uuid=${userID}`);
+		  		const response = await fetch(`https://${sub}/sub?host=${hostName}&uuid=${userID}&edgetunnel=cmliu&proxyip=${RproxyIP}`);
 		  		const content = await response.text();
 		  		return content;
 			} catch (error) {
